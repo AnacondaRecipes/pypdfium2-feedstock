@@ -1,0 +1,46 @@
+{% set name = "pypdfium2" %}
+{% set version = "4.18.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: file:///Users/jolivieri/repos/upstream/pypdfium2/dist/pypdfium2-4.18.0.tar.gz
+  sha256: 409ac0e65ff02c56f28879cdb10846a65c916f79e9b6b32d4975daa6c7450bbb
+
+build:
+  entry_points:
+    - pypdfium2 = pypdfium2.__main__:cli_main
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv
+  number: 0
+
+requirements:
+  host:
+    - python >=3.6
+    - setuptools
+    - build
+    - wheel !=0.38.0,!=0.38.1
+    - ctypesgen @git+https://github.com/pypdfium2-team/ctypesgen@pypdfium2
+    - pip
+  run:
+    - python >=3.6
+
+test:
+  imports:
+    - pypdfium2
+  commands:
+    - pip check
+    - pypdfium2 --help
+  requires:
+    - pip
+
+about:
+  summary: Python bindings to PDFium
+  license: Apache-2.0
+  license_file: data/darwin_arm64/build_tar/LICENSE
+
+extra:
+  recipe-maintainers:
+    - boldorider4
