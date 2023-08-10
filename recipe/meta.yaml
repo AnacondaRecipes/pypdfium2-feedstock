@@ -18,14 +18,14 @@ build:
 
 requirements:
   host:
-    - python >=3.6
+    - python
     - setuptools
     - build
     - wheel !=0.38.0,!=0.38.1
     - ctypesgen
     - pip
   run:
-    - python >=3.6
+    - python
 
 test:
   imports:
