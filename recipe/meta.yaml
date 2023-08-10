@@ -6,8 +6,8 @@ package:
   version: {{ version }}
 
 source:
-  url: file:///Users/jolivieri/repos/upstream/pypdfium2/dist/pypdfium2-4.18.0.tar.gz
-  sha256: 409ac0e65ff02c56f28879cdb10846a65c916f79e9b6b32d4975daa6c7450bbb
+  url: https://github.com/pypdfium2-team/{{ name }}/releases/download/{{ version }}/{{ name }}-{{ version }}.tar.gz
+  sha256: c937121dc475942697fbb3e04ffa7b28d36afc2b76cc9aac22fbd327c6dc6d61
 
 build:
   entry_points:
