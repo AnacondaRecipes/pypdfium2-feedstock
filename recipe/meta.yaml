@@ -42,7 +42,12 @@ about:
     pypdfium2 is an ABI-level Python 3 binding to PDFium, a powerful and liberal-licensed library for PDF rendering,
     inspection, manipulation and creation.
   license: Apache-2.0
-  license_file: LICENSE
+  license-files:
+    - LICENSES/Apache-2.0.txt
+    - LICENSES/BSD-3-Clause.txt
+    - LICENSES/LicenseRef-PdfiumThirdParty.txt
+    - LICENSES/CC-BY-4.0.txt
+    - .reuse/dep5
   doc_url: https://pypdfium2.readthedocs.io/en/stable
   dev_url: https://github.com/pypdfium2-team/pypdfium2
 
