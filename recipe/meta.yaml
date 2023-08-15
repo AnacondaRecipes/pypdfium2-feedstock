@@ -21,7 +21,7 @@ requirements:
     - setuptools
     - build
     - wheel !=0.38.0,!=0.38.1
-    - ctypesgen
+    - ctypesgen-pypdfium2-team 1.1.1+4-g8a62d0
     - pip
   run:
     - python
