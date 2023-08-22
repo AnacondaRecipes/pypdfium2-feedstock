@@ -16,6 +16,9 @@ build:
   number: 0
 
 requirements:
+  build:
+    - git  # [not win]
+    - {{ compiler('c') }}
   host:
     - python
     - setuptools
