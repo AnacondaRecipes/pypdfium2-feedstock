@@ -12,7 +12,8 @@ source:
 build:
   entry_points:
     - pypdfium2 = pypdfium2.__main__:cli_main
-  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  script:
+    - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
   number: 0
 
 requirements:
