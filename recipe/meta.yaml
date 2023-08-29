@@ -8,6 +8,8 @@ package:
 source:
   url: https://github.com/pypdfium2-team/{{ name }}/releases/download/{{ version }}/{{ name }}-{{ version }}.tar.gz
   sha256: c937121dc475942697fbb3e04ffa7b28d36afc2b76cc9aac22fbd327c6dc6d61
+  patches:
+    - 0001-use-pdfium-library-from-repack-dependency.patch
 
 build:
   entry_points:
@@ -20,6 +22,8 @@ requirements:
   build:
     - git  # [not win]
     - {{ compiler('c') }}
+    - patch       # [not win]
+    - m2-patch    # [win]
   host:
     - python
     - setuptools

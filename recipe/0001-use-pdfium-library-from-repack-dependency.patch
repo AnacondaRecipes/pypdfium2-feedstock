@@ -1,0 +1,164 @@
+From 582d4e28c5c8cfbf15071ccd1fcd81417c3668b4 Mon Sep 17 00:00:00 2001
+From: Jack Olivieri <jolivieri@anaconda.com>
+Date: Tue, 29 Aug 2023 18:53:33 +0200
+Subject: [PATCH] use pdfium library from repack dependency
+
+---
+ setupsrc/pypdfium2_setup/packaging_base.py |  7 ++-
+ setupsrc/pypdfium2_setup/setup_base.py     |  4 +-
+ setupsrc/pypdfium2_setup/update_pdfium.py  | 71 ++++++++++++++--------
+ 3 files changed, 52 insertions(+), 30 deletions(-)
+
+diff --git a/setupsrc/pypdfium2_setup/packaging_base.py b/setupsrc/pypdfium2_setup/packaging_base.py
+index 5590810..562ed57 100644
+--- a/setupsrc/pypdfium2_setup/packaging_base.py
++++ b/setupsrc/pypdfium2_setup/packaging_base.py
+@@ -224,13 +224,13 @@ def call_ctypesgen(target_dir, include_dir):
+     # see https://github.com/ctypesgen/ctypesgen/issues/160
+     
+     bindings = target_dir / BindingsFileName
+-    args = ["ctypesgen", "--library", "pdfium", "--runtime-libdir", ".", f"--strip-build-path={include_dir}", *sorted(include_dir.glob("*.h")), "-o", bindings]
++    args = ["ctypesgen", "--library", "pdfium", "--runtime-libdir", ".", f"--strip-build-path={include_dir}", *[h.name for h in sorted(include_dir.glob("fpdf*.h"))], "-o", bindings]
+     
+     if CTYPESGEN_IS_FORK:
+         # extra arguments for our pypdfium2-specific fork of ctypesgen, not available in mainline ctypesgen (yet)
+         args += ["--no-srcinfo"]
+     
+-    run_cmd(args, cwd=target_dir)
++    run_cmd(args, cwd=include_dir)
+     
+     text = bindings.read_text()
+     text = text.replace(str(include_dir), ".")
+@@ -257,7 +257,8 @@ def get_platfiles(pl_name):
+     system = plat_to_system(pl_name)
+     platfiles = (
+         DataTree / pl_name / BindingsFileName,
+-        DataTree / pl_name / LibnameForSystem[system],
++        # do not check if pdfium.[dll|dylib|so] is present
++        # DataTree / pl_name / LibnameForSystem[system],
+     )
+     return platfiles
+ 
+diff --git a/setupsrc/pypdfium2_setup/setup_base.py b/setupsrc/pypdfium2_setup/setup_base.py
+index b5494d8..fcb6566 100644
+--- a/setupsrc/pypdfium2_setup/setup_base.py
++++ b/setupsrc/pypdfium2_setup/setup_base.py
+@@ -46,10 +46,10 @@ def mkwheel(pl_name):
+     emplace_platfiles(pl_name)
+     
+     system = plat_to_system(pl_name)
+-    libname = LibnameForSystem[system]
++    #libname = LibnameForSystem[system]
+     
+     setuptools.setup(
+-        package_data = {"": [libname]},
++        #package_data = {"": [libname]},
+         cmdclass = {"bdist_wheel": bdist_factory(pl_name)},
+         distclass = BinaryDistribution,
+         **SetupKws,
+diff --git a/setupsrc/pypdfium2_setup/update_pdfium.py b/setupsrc/pypdfium2_setup/update_pdfium.py
+index af8c08b..29be151 100755
+--- a/setupsrc/pypdfium2_setup/update_pdfium.py
++++ b/setupsrc/pypdfium2_setup/update_pdfium.py
+@@ -2,6 +2,7 @@
+ # SPDX-FileCopyrightText: 2023 geisserml <geisserml@gmail.com>
+ # SPDX-License-Identifier: Apache-2.0 OR BSD-3-Clause
+ 
++import os
+ import sys
+ import shutil
+ import tarfile
+@@ -105,32 +106,48 @@ def unpack_archives(archives):
+ 
+ def generate_bindings(archives, version):
+     
+-    for pl_name in archives.keys():
++    # now archives is a list and contains plaform str values
++    for pl_name in archives:
+         
+-        pl_dir = DataTree / pl_name
+-        build_dir = pl_dir / "build_tar"
+-        bin_dir = build_dir / "lib"
+-        dirname = pl_dir.name
++        # src comes from _h_env
++        prefix_dir = Path(os.environ['PREFIX'])
++        pl_dir = Path(DataTree) / pl_name
++
++        # useless directories, now that build_tar and lib will
++        # be missing from pl_dir i.e. $SRC_DIR/data/<arch>
++        # build_dir = pl_dir / "build_tar"
++        # bin_dir = pl_dir / "lib"
++        # dirname = pl_dir.name
+         
+-        if dirname.startswith("windows"):
+-            target_name = "pdfium.dll"
+-            bin_dir = build_dir / "bin"
+-        elif dirname.startswith("darwin"):
+-            target_name = "pdfium.dylib"
+-        elif "linux" in dirname:
+-            target_name = "pdfium"
+-        else:
+-            raise ValueError(f"Unknown platform directory name '{dirname}'")
++        # skip dirname check, since the upstream package comes from $PREFIX
++        # if dirname.startswith("windows"):
++        #     target_name = "pdfium.dll"
++        #     bin_dir = build_dir / "bin"
++        # elif dirname.startswith("darwin"):
++        #     target_name = "pdfium.dylib"
++        # elif "linux" in dirname:
++        #     target_name = "pdfium"
++        # else:
++        #     raise ValueError(f"Unknown platform directory name '{dirname}'")
+         
+-        items = list(bin_dir.iterdir())
+-        assert len(items) == 1
+-        shutil.move(bin_dir/items[0], pl_dir/target_name)
++        # also, no point in checking $SRC_DIR/data/<arch>/lib
++        # items = list(bin_dir.iterdir())
++        # assert len(items) == 1
++
++        # no need to move libpdfium.dylib from $SRC_DIR/data/<arch>/lib/pdfium.[so|dylib|dll]
++        # to $SRC_DIR/data/<arch>
++        # shutil.move(bin_dir/items[0], pl_dir/target_name)+
++        # instead, create $SRC_DIR/data/<arch>
++        Path.mkdir(pl_dir, parents=True, exist_ok=True)
+         
+         ver_file = DataTree / pl_name / VerStatusFileName
+         ver_file.write_text(str(version))
+-        
+-        call_ctypesgen(pl_dir, build_dir/"include")
+-        shutil.rmtree(build_dir)
++
++        # now passing $SRC_DIR/data/<arch> and $PREFIX
++        call_ctypesgen(pl_dir, prefix_dir/"include")
++
++        # do not remove $SRC_DIR/data/<arch>/build_tar, as it was never created
++        # shutil.rmtree(build_dir)
+ 
+ 
+ def main(platforms, version=None, robust=False, max_workers=None, use_v8=False, emplace=False):
+@@ -150,12 +167,16 @@ def main(platforms, version=None, robust=False, max_workers=None, use_v8=False,
+         platforms[platforms.index(BinaryTarget_Auto)] = Host.platform
+ 
+     clear_data(platforms)
+-    archives = download_releases(version, platforms, robust, max_workers, use_v8)
+-    unpack_archives(archives)
+-    generate_bindings(archives, version)
++
++    # no need to download and unpack archives since pdfium shared object comes from repack dependency
++    # archives = download_releases(platforms, version, use_v8, max_workers, robust)
++    # unpack_archives(archives)
++    generate_bindings(platforms, version)
+     
+-    if emplace:
+-        emplace_platfiles(Host.platform)
++    # do not emplace platform files in $SRC_DIR/data/<arch>/ (.pdfium_version.txt .pdfium_is_v8.txt)
++    # do not exist because there is no point in packaging them, therefore they are skipped here.
++    # if emplace:
++    #     emplace_platfiles(Host.platform)
+ 
+ 
+ def parse_args(argv):
+-- 
+2.39.2 (Apple Git-143)
+
