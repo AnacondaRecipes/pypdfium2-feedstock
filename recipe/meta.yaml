@@ -49,12 +49,14 @@ test:
     - pip
 
 about:
+  home: https://github.com/pypdfium2-team/pypdfium2
   summary: Python bindings to PDFium
   description: |
     pypdfium2 is an ABI-level Python 3 binding to PDFium, a powerful and liberal-licensed library for PDF rendering,
     inspection, manipulation and creation.
   license: Apache-2.0
-  license-files:
+  license_family: Apache
+  license_file:
     - LICENSES/Apache-2.0.txt
     - LICENSES/BSD-3-Clause.txt
     - LICENSES/LicenseRef-PdfiumThirdParty.txt
@@ -66,3 +68,5 @@ about:
 extra:
   recipe-maintainers:
     - boldorider4
+  skip-lints:
+    - host_section_needs_exact_pinnings
