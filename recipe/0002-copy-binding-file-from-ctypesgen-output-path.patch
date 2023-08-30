@@ -1,0 +1,37 @@
+From b6e52f191caf24949699e4907f67deccdd2ca340 Mon Sep 17 00:00:00 2001
+From: Jack Olivieri <jolivieri@anaconda.com>
+Date: Wed, 30 Aug 2023 21:58:40 +0200
+Subject: [PATCH] copy binding file from ctypesgen output path
+
+---
+ setupsrc/pypdfium2_setup/packaging_base.py | 14 ++++++++++----
+ 1 file changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/setupsrc/pypdfium2_setup/packaging_base.py b/setupsrc/pypdfium2_setup/packaging_base.py
+index 5590810..b685b18 100644
+--- a/setupsrc/pypdfium2_setup/packaging_base.py
++++ b/setupsrc/pypdfium2_setup/packaging_base.py
+@@ -281,10 +281,16 @@ def emplace_platfiles(pl_name):
+     clean_platfiles()
+     platfiles = get_platfiles(pl_name)
+     
+-    for fp in platfiles:
+-        if not fp.exists():
+-            raise RuntimeError(f"Platform file missing: {fp}")
+-        shutil.copy(fp, ModuleDir)
++    # use SRC_DIR/bindings/raw.py as a source for the raw bindings, because all other files
++    # i.e. $SRC_DIR/data/<arch>/raw.py and $SRC_DIR/src/pypdfium2/raw.py are somehow invalid
++    raw_bindings = SourceTree / "bindings" / BindingsFileName
++    if raw_bindings.exists():
++        shutil.copy(raw_bindings, ModuleDir)
++    else:
++        for fp in platfiles:
++            if not fp.exists():
++                raise RuntimeError(f"Platform file missing: {fp}")
++            shutil.copy(fp, ModuleDir)
+ 
+ 
+ def get_changelog_staging(flush=False):
+-- 
+2.39.2 (Apple Git-143)
+
