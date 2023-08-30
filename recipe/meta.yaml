@@ -13,6 +13,7 @@ source:
     - 0002-copy-binding-file-from-ctypesgen-output-path.patch  # [linux]
 
 build:
+  skip: True  # [linux and (ppc64le or s390x)]
   entry_points:
     - pypdfium2 = pypdfium2.__main__:cli_main
   script:
