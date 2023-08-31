@@ -33,7 +33,7 @@ requirements:
     - pip
     - build
     - wheel !=0.38.0,!=0.38.1
-    - ctypesgen-pypdfium2-team 1.1.1+4_g8a62d02
+    - ctypesgen-pypdfium2-team-1.1.1+17_g10b2b4
     - pdfium-binaries 118.0.5868
   run:
     - python
