@@ -11,6 +11,7 @@ source:
   patches:
     - 0001-use-pdfium-library-from-repack-dependency.patch
     - 0002-copy-binding-file-from-ctypesgen-output-path.patch  # [linux]
+    - 0003-fix-windows-include-location.patch
 
 build:
   skip: True  # [linux and (ppc64le or s390x)]
