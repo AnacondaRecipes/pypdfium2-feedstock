@@ -1,7 +1,7 @@
-From 582d4e28c5c8cfbf15071ccd1fcd81417c3668b4 Mon Sep 17 00:00:00 2001
-From: Jack Olivieri <jolivieri@anaconda.com>
-Date: Tue, 29 Aug 2023 18:53:33 +0200
-Subject: [PATCH] use pdfium library from repack dependency
+From 360bdd3dcb3169db6e75fe8274a9c4faa71dca9a Mon Sep 17 00:00:00 2001
+From: Marek Waszkiewicz <mwaszkiewicz@anaconda.com>
+Date: Thu, 31 Aug 2023 16:41:52 +0200
+Subject: [PATCH 1/3] use pdfium library from repack dependency
 
 ---
  setupsrc/pypdfium2_setup/packaging_base.py |  7 ++-
@@ -160,5 +160,5 @@ index af8c08b..29be151 100755
  
  def parse_args(argv):
 -- 
-2.39.2 (Apple Git-143)
+2.25.1
 

@@ -10,7 +10,7 @@ source:
   sha256: c937121dc475942697fbb3e04ffa7b28d36afc2b76cc9aac22fbd327c6dc6d61
   patches:
     - 0001-use-pdfium-library-from-repack-dependency.patch
-    - 0002-copy-binding-file-from-ctypesgen-output-path.patch  # [linux]
+    - 0002-copy-binding-file-from-ctypesgen-output-path.patch
     - 0003-fix-windows-include-location.patch
 
 build:
@@ -23,7 +23,7 @@ build:
 
 requirements:
   build:
-    - git  # [not win]
+    - git         # [not win]
     - {{ compiler('c') }}
     - patch       # [not win]
     - m2-patch    # [win]

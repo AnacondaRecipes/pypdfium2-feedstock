@@ -1,37 +1,37 @@
-From 71e52655c44757ef301038ad03a29dc8ca6821ec Mon Sep 17 00:00:00 2001
+From 0a6e8c671e1a7a0c6dfd6e3919a90335b8abc4cf Mon Sep 17 00:00:00 2001
 From: Marek Waszkiewicz <mwaszkiewicz@anaconda.com>
-Date: Thu, 31 Aug 2023 15:27:42 +0200
-Subject: [PATCH] fix windows include location
+Date: Thu, 31 Aug 2023 16:44:49 +0200
+Subject: [PATCH 3/3] fix windows include location
 
 ---
  setupsrc/pypdfium2_setup/update_pdfium.py | 7 ++++++-
  1 file changed, 6 insertions(+), 1 deletion(-)
 
 diff --git a/setupsrc/pypdfium2_setup/update_pdfium.py b/setupsrc/pypdfium2_setup/update_pdfium.py
-index af8c08b..a741fd9 100755
+index 29be151..3586361 100755
 --- a/setupsrc/pypdfium2_setup/update_pdfium.py
 +++ b/setupsrc/pypdfium2_setup/update_pdfium.py
-@@ -9,6 +9,7 @@ import argparse
+@@ -9,6 +9,7 @@ import tarfile
+ import argparse
  import traceback
  import functools
- import os.path
 +import platform
+ import os.path
  from pathlib import Path
  from urllib import request
- from concurrent.futures import ThreadPoolExecutor
-@@ -129,7 +130,11 @@ def generate_bindings(archives, version):
-         ver_file = DataTree / pl_name / VerStatusFileName
+@@ -144,7 +145,11 @@ def generate_bindings(archives, version):
          ver_file.write_text(str(version))
-         
--        call_ctypesgen(pl_dir, build_dir/"include")
-+        include_dir = build_dir/"include"
+ 
+         # now passing $SRC_DIR/data/<arch> and $PREFIX
+-        call_ctypesgen(pl_dir, prefix_dir/"include")
++        include_dir = prefix_dir/"include"
 +        if platform.system().lower() == "windows":
-+            include_dir = build_dir/"Library/include"
++            include_dir = prefix_dir/"Library/include"
 +
 +        call_ctypesgen(pl_dir, include_dir)
-         shutil.rmtree(build_dir)
  
- 
+         # do not remove $SRC_DIR/data/<arch>/build_tar, as it was never created
+         # shutil.rmtree(build_dir)
 -- 
 2.25.1
 

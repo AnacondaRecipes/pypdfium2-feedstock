@@ -1,17 +1,17 @@
-From b6e52f191caf24949699e4907f67deccdd2ca340 Mon Sep 17 00:00:00 2001
-From: Jack Olivieri <jolivieri@anaconda.com>
-Date: Wed, 30 Aug 2023 21:58:40 +0200
-Subject: [PATCH] copy binding file from ctypesgen output path
+From 7945ff5752b9402d9640373525b58f582eeb4b0c Mon Sep 17 00:00:00 2001
+From: Marek Waszkiewicz <mwaszkiewicz@anaconda.com>
+Date: Thu, 31 Aug 2023 16:43:01 +0200
+Subject: [PATCH 2/3] copy binding file from ctypesgen output path
 
 ---
  setupsrc/pypdfium2_setup/packaging_base.py | 14 ++++++++++----
  1 file changed, 10 insertions(+), 4 deletions(-)
 
 diff --git a/setupsrc/pypdfium2_setup/packaging_base.py b/setupsrc/pypdfium2_setup/packaging_base.py
-index 5590810..b685b18 100644
+index 562ed57..b7bd383 100644
 --- a/setupsrc/pypdfium2_setup/packaging_base.py
 +++ b/setupsrc/pypdfium2_setup/packaging_base.py
-@@ -281,10 +281,16 @@ def emplace_platfiles(pl_name):
+@@ -282,10 +282,16 @@ def emplace_platfiles(pl_name):
      clean_platfiles()
      platfiles = get_platfiles(pl_name)
      
@@ -33,5 +33,5 @@ index 5590810..b685b18 100644
  
  def get_changelog_staging(flush=False):
 -- 
-2.39.2 (Apple Git-143)
+2.25.1
 
