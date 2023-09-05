@@ -21,8 +21,6 @@ build:
   number: 0
 
 requirements:
-  build:
-    - {{ compiler('c') }}
   host:
     - python
     - setuptools
@@ -55,7 +53,6 @@ about:
   license_file:
     - LICENSES/Apache-2.0.txt
     - LICENSES/BSD-3-Clause.txt
-    - LICENSES/LicenseRef-PdfiumThirdParty.txt
     - LICENSES/CC-BY-4.0.txt
     - .reuse/dep5
   doc_url: https://pypdfium2.readthedocs.io/en/stable
