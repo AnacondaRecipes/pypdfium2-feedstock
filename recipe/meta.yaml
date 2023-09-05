@@ -28,11 +28,10 @@ requirements:
     - setuptools
     - pip
     - wheel !=0.38.0,!=0.38.1
-    - ctypesgen-pypdfium2-team 1.1.1+17_g10b2b4
-    - pdfium-binaries 118.0.5868
+    - pdfium-binaries 118.0.5975
   run:
     - python
-    - pdfium-binaries 118.0.5868
+    - pdfium-binaries 118.0.5975
     # to run pypdfium2 imgtopdf you need to have pillow
     - pillow
 
