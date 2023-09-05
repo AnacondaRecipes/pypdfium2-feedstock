@@ -1,0 +1,65 @@
+{% set name = "pypdfium2" %}
+{% set version = "4.19.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 1ca3a2ed080c263229af3fbff35ad7f751361861f10893d9908d4d852fe6eb28
+
+build:
+  skip: True  # [linux and (ppc64le or s390x)]
+  entry_points:
+    - pypdfium2 = pypdfium2.__main__:cli_main
+  script_env:
+    - PDFIUM_PLATFORM=none
+  script:
+    - cp bindings/raw.py src/pypdfium2/raw.py
+    - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  number: 0
+
+requirements:
+  host:
+    - python
+    - setuptools
+    - pip
+    - wheel !=0.38.0,!=0.38.1
+    - pdfium-binaries 118.0.5975
+  run:
+    - python
+    - pdfium-binaries 118.0.5975
+    # to run pypdfium2 imgtopdf you need to have pillow
+    - pillow
+
+test:
+  imports:
+    - pypdfium2
+  commands:
+    - pip check
+    - pypdfium2 --help
+  requires:
+    - pip
+
+about:
+  home: https://github.com/pypdfium2-team/pypdfium2
+  summary: Python bindings to PDFium
+  description: |
+    pypdfium2 is an ABI-level Python 3 binding to PDFium, a powerful and liberal-licensed library for PDF rendering,
+    inspection, manipulation and creation.
+  license: Apache-2.0
+  license_family: Apache
+  license_file:
+    - LICENSES/Apache-2.0.txt
+    - LICENSES/BSD-3-Clause.txt
+    - LICENSES/CC-BY-4.0.txt
+    - .reuse/dep5
+  doc_url: https://pypdfium2.readthedocs.io/en/stable
+  dev_url: https://github.com/pypdfium2-team/pypdfium2
+
+extra:
+  recipe-maintainers:
+    - boldorider4
+  skip-lints:
+    - host_section_needs_exact_pinnings
