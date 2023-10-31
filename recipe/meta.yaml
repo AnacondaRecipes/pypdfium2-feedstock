@@ -48,6 +48,8 @@ about:
   description: |
     pypdfium2 is an ABI-level Python 3 binding to PDFium, a powerful and liberal-licensed library for PDF rendering,
     inspection, manipulation and creation.
+    Note: This is a third-party repack. It is managed by Anaconda Inc., not pypdfium2-team. Upstream also provide
+    their own conda builds at pypdfium2-team::pypdfium2_helpers.
   license: Apache-2.0
   license_family: Apache
   license_file:
