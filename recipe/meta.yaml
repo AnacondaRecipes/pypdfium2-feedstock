@@ -1,5 +1,5 @@
 {% set name = "pypdfium2" %}
-{% set version = "4.19.0" %}
+{% set version = "4.24.0" %}
 
 package:
   name: {{ name|lower }}
@@ -14,9 +14,9 @@ build:
   entry_points:
     - pypdfium2 = pypdfium2.__main__:cli_main
   script_env:
-    - PDFIUM_PLATFORM=none
+    - PDFIUM_PLATFORM=prepared!system:6110
   script:
-    - cp bindings/raw.py src/pypdfium2/raw.py
+    - cp autorelease/bindings.py src/pypdfium2_raw/bindings.py
     - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
   number: 0
 
@@ -26,10 +26,10 @@ requirements:
     - setuptools
     - pip
     - wheel !=0.38.0,!=0.38.1
-    - pdfium-binaries 118.0.5975
+    - pdfium-binaries 121.0.6110
   run:
     - python
-    - pdfium-binaries 118.0.5975
+    - pdfium-binaries 121.0.6110
     # to run pypdfium2 imgtopdf you need to have pillow
     - pillow
 
