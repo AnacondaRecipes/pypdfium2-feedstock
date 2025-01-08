@@ -1,4 +1,2 @@
 upload_channels:
   - sfe1ed40
-channels:
-  - https://staging.continuum.io/prefect/fs/pdfium-binaries-feedstock/pr10/dd697e9
