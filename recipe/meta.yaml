@@ -59,6 +59,11 @@ about:
   dev_url: https://github.com/pypdfium2-team/pypdfium2
 
 extra:
+  anaconda-services:
+    ref: https://anaconda.zendesk.com/agent/tickets/78379
+    reason: Dependency for pdfplumber
+  recipe-maintainers:
+    - ianaobi
   recipe-maintainers:
     - boldorider4
   skip-lints:
