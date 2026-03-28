@@ -1,4 +1,13 @@
+aggregate_check: false
+
+upload_without_merge: true
+
+content_signing: {'win-64': False}
+#mark_private: True
+
 upload_channels:
-  - sfe1ed40
-build_env_vars:
-  ANACONDA_ROCKET_ENABLE_PY313 : yes
+  - services
+
+channels:
+  - services
+ # - services-build-deps
