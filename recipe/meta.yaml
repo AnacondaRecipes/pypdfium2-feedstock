@@ -6,7 +6,7 @@ package:
   version: {{ version }}
 
 source:
-  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
   sha256: 9febb09f532555485f064c1f6442f46d31e27be5981359cb06b5826695906a06
 
 build:
@@ -21,8 +21,7 @@ build:
 
 requirements:
   build:
-    - {{ compiler('c') }}
-    - {{ stdlib('c') }}
+    - {{ compiler('c') }}  # ctypesgen needs C preprocessor
   host:
     - python
     - setuptools
