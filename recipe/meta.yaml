@@ -56,7 +56,6 @@ about:
     - LICENSES/Apache-2.0.txt
     - LICENSES/BSD-3-Clause.txt
     - LICENSES/CC-BY-4.0.txt
-    - .reuse/dep5
   doc_url: https://pypdfium2.readthedocs.io/en/stable
   dev_url: https://github.com/pypdfium2-team/pypdfium2
 
