@@ -1,4 +1,6 @@
-upload_channels:
-  - sfe1ed40
-build_env_vars:
-  ANACONDA_ROCKET_ENABLE_PY313 : yes
+channels:
+  - https://staging.continuum.io/pbp/pdfium-7776-staging
+  - https://staging.continuum.io/pbp/ctypesgen-pypdfium2-5.4.0-staging
+
+build_parameters:
+  - "--error-overlinking"
