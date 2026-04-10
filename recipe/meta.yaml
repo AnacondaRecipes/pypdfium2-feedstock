@@ -1,37 +1,39 @@
 {% set name = "pypdfium2" %}
-{% set version = "4.19.0" %}
+{% set version = "5.7.0" %}
 
 package:
   name: {{ name|lower }}
   version: {{ version }}
 
 source:
-  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: 1ca3a2ed080c263229af3fbff35ad7f751361861f10893d9908d4d852fe6eb28
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: 9febb09f532555485f064c1f6442f46d31e27be5981359cb06b5826695906a06
 
 build:
-  skip: True  # [linux and (ppc64le or s390x)]
+  skip: True  # [win or (linux and (s390x or ppc64le))]
   entry_points:
     - pypdfium2 = pypdfium2.__main__:cli_main
   script_env:
-    - PDFIUM_PLATFORM=none
+    - PDFIUM_PLATFORM=system-search
   script:
-    - cp bindings/raw.py src/pypdfium2/raw.py
     - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
-  number: 1
+  number: 0
 
 requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ stdlib('c') }}
   host:
     - python
     - setuptools
+    - packaging
     - pip
-    - wheel !=0.38.0,!=0.38.1
-    - pdfium-binaries 118.0.5975
+    - wheel
+    - ctypesgen-pypdfium2-team >=5.4.0
+    - pdfium 7776
   run:
     - python
-    - pdfium-binaries 118.0.5975
-    # to run pypdfium2 imgtopdf you need to have pillow
-    - pillow
+    - pdfium 7776
 
 test:
   imports:
@@ -61,5 +63,3 @@ about:
 extra:
   recipe-maintainers:
     - boldorider4
-  skip-lints:
-    - host_section_needs_exact_pinnings
