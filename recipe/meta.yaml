@@ -22,6 +22,7 @@ requirements:
     - {{ stdlib('c') }}
     - gn          # [not win]
     - ninja-base  # [not win]
+    - llvm-tools  # [osx]     provides llvm-ar (pdfium's `ar -D` needs it; Apple ar lacks -D)
     - git
     - python
   host:
