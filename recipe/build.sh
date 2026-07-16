@@ -52,6 +52,15 @@ fi
 # portable-Linux fallback params upstream tests in CI. -j honours the conda build
 # CPU allocation. (Deps are vendored for a green baseline; unvendoring specific
 # libs to the conda host packages -- for vuln tracking -- is a follow-up.)
-export BUILD_PARAMS="--vendor all --no-vendor libc++ --no-libclang-rt -j ${CPU_COUNT:-4}"
+if [[ "$(uname)" == "Darwin" ]]; then
+    # Force clang mode on macOS. Otherwise build_native takes its "gcc" toolchain
+    # path (because /usr/bin/gcc exists), which drives GN's gcc_toolchain -- and
+    # that emits Linux-only linker flags for the shared lib (-Wl,-soname,
+    # -Wl,--whole-archive) that Apple ld rejects. Clang mode uses pdfium's
+    # mac-native toolchain, which links dylibs correctly (-install_name/-all_load).
+    export BUILD_PARAMS="--compiler clang --clang-path ${BUILD_PREFIX} --vendor all --no-vendor libc++ --no-libclang-rt -j ${CPU_COUNT:-4}"
+else
+    export BUILD_PARAMS="--vendor all --no-vendor libc++ --no-libclang-rt -j ${CPU_COUNT:-4}"
+fi
 
 $PYTHON -m pip install . -vv --no-deps --no-build-isolation

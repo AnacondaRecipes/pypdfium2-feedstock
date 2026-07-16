@@ -11,8 +11,12 @@ set PDFIUM_PLATFORM=sourcebuild-toolchained
 
 REM depot_tools self-bootstrap (win_tools.bat) tries to fetch its own git/python
 REM from CIPD and fails on the build worker ("Git was not found in PATH"). Disable
-REM the bootstrap so gclient uses the conda `git` (build dep) already on PATH.
+REM the bootstrap so gclient uses the conda `git` (build dep) instead.
 set DEPOT_TOOLS_UPDATE=0
+
+REM gclient sync then invokes `git` itself for its cache dir and can't find it
+REM (WinError 2). Put conda's git (Library\bin) explicitly ahead on PATH.
+set "PATH=%LIBRARY_BIN%;%PATH%"
 
 %PYTHON% -m pip install . -vv --no-deps --no-build-isolation
 if errorlevel 1 exit 1
