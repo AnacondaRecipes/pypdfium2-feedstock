@@ -28,7 +28,20 @@ if [[ "$(uname)" == "Darwin" ]]; then
     # that re-execs `ld64.lld` (from the `lld` build dep) so lld selects Mach-O.
     cat > "$BUILD_PREFIX/bin/ld.lld" <<'LDLLD'
 #!/bin/bash
-exec ld64.lld "$@"
+# Re-exec as ld64.lld so lld links Mach-O. Also make the shared lib relocatable:
+# pdfium's clang-mode link sets no -install_name (it defaults to ./libpdfium.dylib)
+# and no headerpad, so conda-build's install_name_tool rpath fixup then fails.
+# Inject -install_name @rpath/<name> + -headerpad_max_install_names for .dylib output.
+extra=(-headerpad_max_install_names)
+prev=""; out=""
+for x in "$@"; do
+  [ "$prev" = "-o" ] && out="$x"
+  prev="$x"
+done
+case "$out" in
+  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")") ;;
+esac
+exec ld64.lld "$@" "${extra[@]}"
 LDLLD
     chmod +x "$BUILD_PREFIX/bin/ld.lld"
     # Shim every clang/clang++ driver the toolchain might invoke (bare names plus
