@@ -38,6 +38,14 @@ requirements:
     # (--rt-libpaths/--ct-libpaths/--symbol-rules/--no-system-libsearch) that only
     # the 5.4.0 fork understands; 1.1.1+N on pkgs/main is too old (metadata-gen fails).
     - ctypesgen-pypdfium2-team >=5.4.0
+    # Unvendored third-party libs (build.sh --no-vendor): pdfium links these conda
+    # copies instead of bundling. Their run_exports add them to run, so they're
+    # tracked as real dependencies (CBC pins the versions).
+    - zlib
+    - libpng
+    - lcms2
+    - openjpeg
+    - libtiff
   run:
     - python
 

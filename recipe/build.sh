@@ -69,21 +69,26 @@ SHIM
     export PATH="$_SHIM:$PATH"
 fi
 
-# Vendor pdfium's bundled third-party libs, except libc++ (use the system C++
-# stdlib -- libstdc++ with conda gcc). --no-libclang-rt tells pdfium's build not
-# to insist on libclang_rt.builtins.a (libgcc is used instead). This mirrors the
-# portable-Linux fallback params upstream tests in CI. -j honours the conda build
-# CPU allocation. (Deps are vendored for a green baseline; unvendoring specific
-# libs to the conda host packages -- for vuln tracking -- is a follow-up.)
+# Vendor pdfium's bundled third-party libs, EXCEPT the ones listed here, which we
+# link from the conda host packages instead (--no-vendor sets pdfium's GN
+# use_system_<lib>). Unvendoring makes each a real conda run dep (via run_exports),
+# so vulnerability trackers see them -- the point of building them separately.
+#   - libc++: use the system C++ stdlib (libstdc++ with conda gcc).
+#   - zlib/libpng/lcms2/openjpeg/libtiff: self-contained image/compression libs,
+#     low pdfium coupling. (freetype/libjpeg/icu stay vendored for now -- pdfium
+#     couples to specific versions / the 12-bit libjpeg path; a later wave.)
+# --no-libclang-rt: don't require libclang_rt.builtins.a (use libgcc). -j honours
+# the conda build CPU allocation.
+_UNVENDOR="libc++ zlib libpng lcms2 openjpeg libtiff"
 if [[ "$(uname)" == "Darwin" ]]; then
     # Force clang mode on macOS. Otherwise build_native takes its "gcc" toolchain
     # path (because /usr/bin/gcc exists), which drives GN's gcc_toolchain -- and
     # that emits Linux-only linker flags for the shared lib (-Wl,-soname,
     # -Wl,--whole-archive) that Apple ld rejects. Clang mode uses pdfium's
     # mac-native toolchain, which links dylibs correctly (-install_name/-all_load).
-    export BUILD_PARAMS="--compiler clang --clang-path ${BUILD_PREFIX} --vendor all --no-vendor libc++ --no-libclang-rt -j ${CPU_COUNT:-4}"
+    export BUILD_PARAMS="--compiler clang --clang-path ${BUILD_PREFIX} --vendor all --no-vendor ${_UNVENDOR} --no-libclang-rt -j ${CPU_COUNT:-4}"
 else
-    export BUILD_PARAMS="--vendor all --no-vendor libc++ --no-libclang-rt -j ${CPU_COUNT:-4}"
+    export BUILD_PARAMS="--vendor all --no-vendor ${_UNVENDOR} --no-libclang-rt -j ${CPU_COUNT:-4}"
 fi
 
 $PYTHON -m pip install . -vv --no-deps --no-build-isolation
