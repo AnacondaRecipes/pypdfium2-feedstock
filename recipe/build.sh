@@ -40,27 +40,29 @@ if [[ "$(uname)" == "Darwin" ]]; then
     # that re-execs `ld64.lld` (from the `lld` build dep) so lld selects Mach-O.
     cat > "$BUILD_PREFIX/bin/ld.lld" <<'LDLLD'
 #!/bin/bash
-# Re-exec as ld64.lld so lld links Mach-O. Also make the shared lib relocatable:
-# pdfium's clang-mode link sets no -install_name (it defaults to ./libpdfium.dylib)
-# and no headerpad, so conda-build's install_name_tool rpath fixup then fails.
-# Inject -install_name @rpath/<name> + -headerpad_max_install_names for .dylib output.
+# Re-exec as ld64.lld so lld links Mach-O, with fixups for the conda build:
+#  * -install_name @rpath + -headerpad so conda's install_name_tool relocation works
+#    (pdfium's clang-mode link sets neither, defaulting the id to ./libpdfium.dylib).
+#  * -llcms2 -lopenjp2: pdfium's use_system_lcms2/libopenjpeg2 configs auto-link on
+#    Linux but don't emit -l flags on macOS (openjpeg 2.x lib is libopenjp2);
+#    LIBRARY_PATH supplies -L, same as zlib/libpng/libtiff which already resolve.
+#  * bump the link's macOS min version to conda's baseline ($MACOSX_DEPLOYMENT_TARGET,
+#    12.1) -- pdfium hardcodes 11.0, and ld64.lld errors linking conda's newer dylibs
+#    ("version 12.1.0 ... newer than target minimum of 11.0.0") into an older target.
+MINVER="${MACOSX_DEPLOYMENT_TARGET:-12.1}"
 extra=(-headerpad_max_install_names)
-prev=""; out=""
-for x in "$@"; do
-  [ "$prev" = "-o" ] && out="$x"
-  prev="$x"
+out=""; prev=""; args=()
+while [ $# -gt 0 ]; do
+  if [ "$1" = "-platform_version" ]; then
+    args+=("$1" "$2" "$MINVER" "$4"); shift 4; continue   # platform, min->MINVER, sdk
+  fi
+  [ "$prev" = "-o" ] && out="$1"
+  prev="$1"; args+=("$1"); shift
 done
 case "$out" in
-  *.dylib)
-    extra+=(-install_name "@rpath/$(basename "$out")")
-    # pdfium's use_system_lcms2 / use_system_libopenjpeg2 configs don't emit the
-    # link flags on macOS (they auto-link on Linux), leaving cms*/opj_* undefined.
-    # Add them explicitly (openjpeg 2.x lib is libopenjp2); LIBRARY_PATH supplies
-    # the -L search path, same as zlib/libpng/libtiff which already resolve.
-    extra+=(-llcms2 -lopenjp2)
-    ;;
+  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")" -llcms2 -lopenjp2) ;;
 esac
-exec ld64.lld "$@" "${extra[@]}"
+exec ld64.lld "${args[@]}" "${extra[@]}"
 LDLLD
     chmod +x "$BUILD_PREFIX/bin/ld.lld"
     # Shim every clang/clang++ driver the toolchain might invoke (bare names plus
