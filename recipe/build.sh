@@ -10,15 +10,15 @@ set -euo pipefail
 export PDFIUM_PLATFORM="sourcebuild-native"
 
 # Let pdfium's hermetic compiles/links find the unvendored conda libs (zlib,
-# libpng, lcms2, openjpeg, libtiff). pdfium invokes the compiler by absolute path,
-# so -I/-L flag injection won't reach it -- but CPATH/LIBRARY_PATH are read from
-# the environment by clang/gcc themselves. They rank below pdfium's own -I/-L, so
-# only headers/libs it doesn't vendor (the system ones) resolve through them.
+# libpng, lcms2, openjpeg, libtiff, freetype). pdfium invokes the compiler by
+# absolute path, so -I/-L flag injection won't reach it -- but CPATH/LIBRARY_PATH
+# are read from the environment by clang/gcc themselves. They rank below pdfium's
+# own -I/-L, so only headers/libs it doesn't vendor (the system ones) resolve.
 export CPATH="${PREFIX}/include${CPATH:+:$CPATH}"
 export LIBRARY_PATH="${PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
-# openjpeg installs headers under a versioned subdir (include/openjpeg-X.Y).
-for _ojp in "${PREFIX}"/include/openjpeg-*; do
-    [ -d "$_ojp" ] && export CPATH="${_ojp}:${CPATH}"
+# openjpeg and freetype install headers under subdirs (openjpeg-X.Y, freetype2).
+for _inc in "${PREFIX}"/include/openjpeg-* "${PREFIX}"/include/freetype2; do
+    [ -d "$_inc" ] && export CPATH="${_inc}:${CPATH}"
 done
 
 # macOS toolchain shims. build_native takes its "gcc" toolchain path on macOS
@@ -60,7 +60,7 @@ while [ $# -gt 0 ]; do
   prev="$1"; args+=("$1"); shift
 done
 case "$out" in
-  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")" -llcms2 -lopenjp2) ;;
+  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")" -llcms2 -lopenjp2 -lfreetype) ;;
 esac
 exec ld64.lld "${args[@]}" "${extra[@]}"
 LDLLD
@@ -95,12 +95,13 @@ fi
 # use_system_<lib>). Unvendoring makes each a real conda run dep (via run_exports),
 # so vulnerability trackers see them -- the point of building them separately.
 #   - libc++: use the system C++ stdlib (libstdc++ with conda gcc).
-#   - zlib/libpng/lcms2/openjpeg/libtiff: self-contained image/compression libs,
-#     low pdfium coupling. (freetype/libjpeg/icu stay vendored for now -- pdfium
-#     couples to specific versions / the 12-bit libjpeg path; a later wave.)
+#   - zlib/libpng/lcms2/openjpeg/libtiff: self-contained image/compression libs.
+#   - freetype: font engine (build_native sets pdf_bundle_freetype=false); high
+#     CVE surface, so a valuable one to track. (libjpeg/icu stay vendored for now
+#     -- the 12-bit libjpeg path / pdfium's ICU version coupling; a later wave.)
 # --no-libclang-rt: don't require libclang_rt.builtins.a (use libgcc). -j honours
 # the conda build CPU allocation.
-_UNVENDOR="libc++ zlib libpng lcms2 openjpeg libtiff"
+_UNVENDOR="libc++ zlib libpng lcms2 openjpeg libtiff freetype"
 if [[ "$(uname)" == "Darwin" ]]; then
     # Force clang mode on macOS. Otherwise build_native takes its "gcc" toolchain
     # path (because /usr/bin/gcc exists), which drives GN's gcc_toolchain -- and

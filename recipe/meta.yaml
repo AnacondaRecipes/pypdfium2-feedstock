@@ -46,6 +46,7 @@ requirements:
     - lcms2
     - openjpeg
     - libtiff
+    - freetype
   run:
     - python
 
