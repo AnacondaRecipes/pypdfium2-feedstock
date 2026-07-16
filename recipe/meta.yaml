@@ -10,7 +10,9 @@ source:
   sha256: 9febb09f532555485f064c1f6442f46d31e27be5981359cb06b5826695906a06
 
 build:
-  skip: True  # [linux and (s390x or ppc64le)]
+  # win-64 needs the sourcebuild-toolchained backend (depot_tools + MSVC); that
+  # integration is deferred to a follow-up (see bld.bat / PKG follow-up ticket).
+  skip: True  # [win or (linux and (s390x or ppc64le))]
   entry_points:
     - pypdfium2 = pypdfium2_cli.__main__:cli_main
   number: 0
