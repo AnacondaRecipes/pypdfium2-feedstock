@@ -51,7 +51,14 @@ for x in "$@"; do
   prev="$x"
 done
 case "$out" in
-  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")") ;;
+  *.dylib)
+    extra+=(-install_name "@rpath/$(basename "$out")")
+    # pdfium's use_system_lcms2 / use_system_libopenjpeg2 configs don't emit the
+    # link flags on macOS (they auto-link on Linux), leaving cms*/opj_* undefined.
+    # Add them explicitly (openjpeg 2.x lib is libopenjp2); LIBRARY_PATH supplies
+    # the -L search path, same as zlib/libpng/libtiff which already resolve.
+    extra+=(-llcms2 -lopenjp2)
+    ;;
 esac
 exec ld64.lld "$@" "${extra[@]}"
 LDLLD
