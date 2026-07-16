@@ -21,6 +21,11 @@ if [[ "$(uname)" == "Darwin" ]]; then
     _SHIM="${SRC_DIR}/_shim"
     mkdir -p "$_SHIM"
     ln -sf "$(command -v llvm-ar)" "$_SHIM/ar"
+    # clang mode (BUILD_PARAMS below) force-patches pdfium's -fuse-ld to
+    # <clang_path>/bin/ld.lld -- the ELF lld name. On macOS pdfium actually wants
+    # the Mach-O lld (it emits lld flags: --icf, --strict-auto-link, -mllvm), so
+    # point that exact path at ld64.lld (from the `lld` build dep).
+    ln -sf "$(command -v ld64.lld)" "$BUILD_PREFIX/bin/ld.lld"
     # Shim every clang/clang++ driver the toolchain might invoke (bare names plus
     # the conda arm64-apple-darwin*-clang[++] wrappers -- gcc_solink_wrapper.py
     # calls the driver by its toolchain name, which is the darwin-prefixed one).
