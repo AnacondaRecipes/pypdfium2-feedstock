@@ -21,6 +21,20 @@ for _inc in "${PREFIX}"/include/openjpeg-* "${PREFIX}"/include/freetype2; do
     [ -d "$_inc" ] && export CPATH="${_inc}:${CPATH}"
 done
 
+# Linux only: pdfium's system-freetype config (freetype_from_pkgconfig) also runs
+# pkg_config("gio_config") for gio-2.0/gio-unix-2.0. pdfium doesn't use gio
+# (use_glib=false), but `gn gen` errors if pkg-config can't resolve them. Provide
+# empty stub .pc files so the query succeeds without pulling glib into the deps.
+if [[ "$(uname)" != "Darwin" ]]; then
+    _STUB_PC="${SRC_DIR}/_stub_pc"
+    mkdir -p "$_STUB_PC"
+    for _p in gio-2.0 gio-unix-2.0; do
+        printf 'Name: %s\nVersion: 2.0\nDescription: stub for pdfium gn gen\nLibs:\nCflags:\n' \
+            "$_p" > "$_STUB_PC/${_p}.pc"
+    done
+    export PKG_CONFIG_PATH="${_STUB_PC}${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+fi
+
 # macOS toolchain shims. build_native takes its "gcc" toolchain path on macOS
 # (because /usr/bin/gcc exists), driving conda's clang via GN's gcc_toolchain --
 # which is Linux-shaped in two spots that break on Apple tools:
