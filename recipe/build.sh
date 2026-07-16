@@ -9,6 +9,18 @@ set -euo pipefail
 # so the whole DEPS list + patch set is maintained upstream, not in this recipe.
 export PDFIUM_PLATFORM="sourcebuild-native"
 
+# Let pdfium's hermetic compiles/links find the unvendored conda libs (zlib,
+# libpng, lcms2, openjpeg, libtiff). pdfium invokes the compiler by absolute path,
+# so -I/-L flag injection won't reach it -- but CPATH/LIBRARY_PATH are read from
+# the environment by clang/gcc themselves. They rank below pdfium's own -I/-L, so
+# only headers/libs it doesn't vendor (the system ones) resolve through them.
+export CPATH="${PREFIX}/include${CPATH:+:$CPATH}"
+export LIBRARY_PATH="${PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+# openjpeg installs headers under a versioned subdir (include/openjpeg-X.Y).
+for _ojp in "${PREFIX}"/include/openjpeg-*; do
+    [ -d "$_ojp" ] && export CPATH="${_ojp}:${CPATH}"
+done
+
 # macOS toolchain shims. build_native takes its "gcc" toolchain path on macOS
 # (because /usr/bin/gcc exists), driving conda's clang via GN's gcc_toolchain --
 # which is Linux-shaped in two spots that break on Apple tools:
