@@ -35,14 +35,10 @@ if [[ "$(uname)" != "Darwin" ]]; then
     export PKG_CONFIG_PATH="${_STUB_PC}${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 fi
 
-# macOS toolchain shims. build_native takes its "gcc" toolchain path on macOS
-# (because /usr/bin/gcc exists), driving conda's clang via GN's gcc_toolchain --
-# which is Linux-shaped in two spots that break on Apple tools:
-#   1. archives static libs with `ar -r -c -D`; Apple's /usr/bin/ar has no -D
-#      (GNU ar on Linux does, which is why Linux builds clean). Shim `ar` -> llvm-ar.
-#   2. links the shared lib with `-Wl,-soname,libpdfium.dylib`; macOS ld has no
-#      -soname (it uses -install_name). Shim conda's $CC/$CXX drivers to rewrite
-#      `-Wl,-soname,X` -> `-Wl,-install_name,@rpath/X`.
+# macOS toolchain shims (we force clang mode below -- see BUILD_PARAMS):
+#   1. `ar` -> llvm-ar: pdfium archives static libs with `ar -r -c -D`, and Apple's
+#      /usr/bin/ar has no -D flag (GNU ar on Linux does, which is why Linux is clean).
+#   2. ld.lld wrapper: re-exec as ld64.lld (Mach-O flavor) + relocation/version fixups.
 if [[ "$(uname)" == "Darwin" ]]; then
     _SHIM="${SRC_DIR}/_shim"
     mkdir -p "$_SHIM"
@@ -79,29 +75,7 @@ esac
 exec ld64.lld "${args[@]}" "${extra[@]}"
 LDLLD
     chmod +x "$BUILD_PREFIX/bin/ld.lld"
-    # Shim every clang/clang++ driver the toolchain might invoke (bare names plus
-    # the conda arm64-apple-darwin*-clang[++] wrappers -- gcc_solink_wrapper.py
-    # calls the driver by its toolchain name, which is the darwin-prefixed one).
-    for _name in clang clang++ "$CC" "$CXX" \
-                 arm64-apple-darwin20.0.0-clang arm64-apple-darwin20.0.0-clang++; do
-        [ -n "$_name" ] || continue
-        _real="$(command -v "$_name" 2>/dev/null)" || continue
-        case "$_real" in "$_SHIM"/*) continue ;; esac   # don't shim our own shim
-        cat > "$_SHIM/$(basename "$_name")" <<SHIM
-#!/bin/bash
-a=()
-for x in "\$@"; do
-  case "\$x" in
-    -Wl,-soname,*) a+=("-Wl,-install_name,@rpath/\${x#-Wl,-soname,}") ;;
-    -Wl,-soname=*) a+=("-Wl,-install_name,@rpath/\${x#-Wl,-soname=}") ;;
-    *) a+=("\$x") ;;
-  esac
-done
-exec "$_real" "\${a[@]}"
-SHIM
-        chmod +x "$_SHIM/$(basename "$_name")"
-    done
-    export PATH="$_SHIM:$PATH"
+    export PATH="$_SHIM:$PATH"   # put the ar shim ahead of Apple's /usr/bin/ar
 fi
 
 # Vendor pdfium's bundled third-party libs, EXCEPT the ones listed here, which we
