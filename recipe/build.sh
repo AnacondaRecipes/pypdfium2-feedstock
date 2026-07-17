@@ -122,7 +122,31 @@ esac
 exec ld64.lld "${args[@]}" "${extra[@]}"
 LDLLD
     chmod +x "$BUILD_PREFIX/bin/ld.lld"
-    export PATH="$_SHIM:$PATH"   # put the ar shim ahead of Apple's /usr/bin/ar
+    # At pdfium 7891/7913 build_native links the shared lib through gcc_solink_wrapper
+    # with a bare clang++ (no -fuse-ld, so the ld.lld wrapper above isn't hit), and it
+    # emits the Linux `-Wl,-soname` flag that Apple ld rejects. Shim the compiler
+    # drivers to rewrite -Wl,-soname,X -> -Wl,-install_name,@rpath/X. (Harmless in the
+    # clang-toolchain path, where the driver is called by absolute path and emits no -soname.)
+    for _name in clang clang++ "$CC" "$CXX" \
+                 arm64-apple-darwin20.0.0-clang arm64-apple-darwin20.0.0-clang++; do
+        [ -n "$_name" ] || continue
+        _real="$(command -v "$_name" 2>/dev/null)" || continue
+        case "$_real" in "$_SHIM"/*) continue ;; esac
+        cat > "$_SHIM/$(basename "$_name")" <<SHIM
+#!/bin/bash
+a=()
+for x in "\$@"; do
+  case "\$x" in
+    -Wl,-soname,*) a+=("-Wl,-install_name,@rpath/\${x#-Wl,-soname,}") ;;
+    -Wl,-soname=*) a+=("-Wl,-install_name,@rpath/\${x#-Wl,-soname=}") ;;
+    *) a+=("\$x") ;;
+  esac
+done
+exec "$_real" "\${a[@]}"
+SHIM
+        chmod +x "$_SHIM/$(basename "$_name")"
+    done
+    export PATH="$_SHIM:$PATH"   # ar + compiler shims ahead of Apple's tools
 fi
 
 # Vendor pdfium's bundled third-party libs, EXCEPT the ones listed here, which we

@@ -1,5 +1,5 @@
 {% set name = "pypdfium2" %}
-{% set version = "5.10.1" %}
+{% set version = "5.12.1" %}
 
 package:
   name: {{ name|lower }}
@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: f257d2011eb43c846b7e9f5a802e28646b29732763e4a35dd6ca76f9be580538
+  sha256: d0e0648fb2e28f50efcd1ec0a5a18ced9f4d66b2c227fae9b603f0a883b2d13f
 
 build:
   # win-64 needs the sourcebuild-toolchained backend (depot_tools + MSVC); that
