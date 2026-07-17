@@ -11,29 +11,36 @@ export PDFIUM_PLATFORM="sourcebuild-native"
 
 # --- macOS SDK discovery + find_sdk redirect --------------------------------
 # pdfium's build/mac/find_sdk.py demands a minimum macOS SDK and looks ONLY under
-# $DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs (i.e. Xcode.app), where
-# the PBP worker currently has just MacOSX11.3.sdk -- even though CommandLineTools
-# has the newer MacOSX12.1.sdk (CONDA_BUILD_SYSROOT). First echo what SDKs actually
-# exist (diagnostic), then build a fake DEVELOPER_DIR that mirrors the real one but
-# exposes the CommandLineTools SDK under higher-version names so find_sdk accepts it.
+# $DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs (i.e. Xcode.app), which on
+# the PBP worker has only an 11.3-named SDK -- even though CommandLineTools actually
+# holds real MacOSX14.5.sdk / 15.2.sdk. Diagnostic first (crash-proofed: it runs in a
+# subshell with pipefail off so `find|head` SIGPIPE etc. can't fail the build), then
+# a fake DEVELOPER_DIR that mirrors the real one but exposes the real 14.5 SDK so
+# find_sdk accepts it and pdfium builds against genuine 14.5 headers.
 if [[ "$(uname)" == "Darwin" ]]; then
-    echo "===== macOS SDK DIAGNOSTIC ====="
-    echo "-- xcode-select -p --"; xcode-select -p 2>&1
-    echo "-- CONDA_BUILD_SYSROOT --"; echo "${CONDA_BUILD_SYSROOT:-<unset>}"
-    echo "-- CommandLineTools SDKs --"; ls -l /Library/Developer/CommandLineTools/SDKs/ 2>&1
-    echo "-- Xcode.app SDKs --"; ls -l "$(xcode-select -p 2>/dev/null)/Platforms/MacOSX.platform/Developer/SDKs/" 2>&1
-    echo "-- MacOSX.sdk resolves to --"; readlink "$(xcode-select -p 2>/dev/null)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" 2>&1
-    echo "-- xcodebuild -showsdks --"; xcodebuild -showsdks 2>&1 | grep -i macos || echo "(xcodebuild unavailable)"
-    echo "-- xcrun sdk version/path --"; xcrun --show-sdk-version 2>&1; xcrun --show-sdk-path 2>&1
-    echo "-- any 13/14/15 SDK anywhere --"; find /Library/Developer /Applications 2>/dev/null -maxdepth 7 -iname 'MacOSX1[3-9]*.sdk' -o -iname 'MacOSX.sdk' 2>/dev/null | head
-    echo "===== END SDK DIAGNOSTIC ====="
+    ( set +e +o pipefail
+      echo "===== macOS SDK DIAGNOSTIC ====="
+      echo "-- xcode-select -p --"; xcode-select -p
+      echo "-- CONDA_BUILD_SYSROOT --"; echo "${CONDA_BUILD_SYSROOT:-<unset>}"
+      echo "-- CommandLineTools SDKs --"; ls -l /Library/Developer/CommandLineTools/SDKs/
+      echo "-- Xcode.app SDKs --"; ls -l "$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs/"
+      echo "-- xcodebuild -showsdks --"; xcodebuild -showsdks 2>&1 | grep -i macos
+      echo "-- xcrun sdk --"; xcrun --show-sdk-version; xcrun --show-sdk-path
+      echo "===== END SDK DIAGNOSTIC ====="
+    ) 2>&1 || true
+
+    # Pick the newest real CommandLineTools SDK (14.5/15.2 if present), else the sysroot.
+    _CLT_SDK=""
+    for _cand in MacOSX15.2 MacOSX14.5 MacOSX13.3 MacOSX12.3; do
+        _p="/Library/Developer/CommandLineTools/SDKs/${_cand}.sdk"
+        [ -d "$_p" ] && { _CLT_SDK="$_p"; break; }
+    done
+    [ -n "$_CLT_SDK" ] || _CLT_SDK="${CONDA_BUILD_SYSROOT:-/Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk}"
 
     _REAL_DEV="$(xcode-select -p 2>/dev/null || echo /Applications/Xcode.app/Contents/Developer)"
-    _CLT_SDK="${CONDA_BUILD_SYSROOT:-/Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk}"
     _FAKE_DEV="${SRC_DIR}/_fake_dev"
     mkdir -p "$_FAKE_DEV/Platforms/MacOSX.platform/Developer/SDKs"
-    # mirror the real developer dir's top-level entries (Toolchains, usr, ...) so
-    # any DEVELOPER_DIR-based tool lookups still resolve to the real Xcode tools
+    # mirror the real developer dir top-level entries so DEVELOPER_DIR tool lookups still work
     for _e in "$_REAL_DEV"/*; do
         [ "$(basename "$_e")" = "Platforms" ] && continue
         ln -sf "$_e" "$_FAKE_DEV/$(basename "$_e")"
@@ -42,12 +49,10 @@ if [[ "$(uname)" == "Darwin" ]]; then
     for _s in "$_REAL_DEV"/Platforms/MacOSX.platform/Developer/SDKs/*; do
         [ -e "$_s" ] && ln -sf "$_s" "$_SDKS/$(basename "$_s")"
     done
-    # expose the CommandLineTools SDK under its real name + higher aliases so
-    # find_sdk.py's ">= min" check is satisfied (it builds against these headers)
+    # expose the real newest CLT SDK under its own name so find_sdk.py's ">=min" passes
     ln -sf "$_CLT_SDK" "$_SDKS/$(basename "$_CLT_SDK")"
-    for _v in 13.0 13.3 14.0 14.5; do ln -sf "$_CLT_SDK" "$_SDKS/MacOSX${_v}.sdk"; done
     export DEVELOPER_DIR="$_FAKE_DEV"
-    echo "Redirected DEVELOPER_DIR=$DEVELOPER_DIR (SDKs -> $_CLT_SDK)"
+    echo "Redirected DEVELOPER_DIR=$DEVELOPER_DIR (exposing real SDK $_CLT_SDK)"
 fi
 # ---------------------------------------------------------------------------
 
