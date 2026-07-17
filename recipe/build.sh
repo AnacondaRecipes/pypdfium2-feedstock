@@ -40,19 +40,34 @@ if [[ "$(uname)" == "Darwin" ]]; then
     _REAL_DEV="$(xcode-select -p 2>/dev/null || echo /Applications/Xcode.app/Contents/Developer)"
     _FAKE_DEV="${SRC_DIR}/_fake_dev"
     mkdir -p "$_FAKE_DEV/Platforms/MacOSX.platform/Developer/SDKs"
-    # mirror the real developer dir top-level entries so DEVELOPER_DIR tool lookups still work
+    # mirror the real developer dir top-level entries so DEVELOPER_DIR tool lookups
+    # still work (rebuild Platforms + Toolchains below)
     for _e in "$_REAL_DEV"/*; do
-        [ "$(basename "$_e")" = "Platforms" ] && continue
+        case "$(basename "$_e")" in Platforms|Toolchains) continue ;; esac
         ln -sf "$_e" "$_FAKE_DEV/$(basename "$_e")"
     done
+    # Platforms: real SDKs + expose the newest CLT SDK so find_sdk.py's ">=min" passes
     _SDKS="$_FAKE_DEV/Platforms/MacOSX.platform/Developer/SDKs"
     for _s in "$_REAL_DEV"/Platforms/MacOSX.platform/Developer/SDKs/*; do
         [ -e "$_s" ] && ln -sf "$_s" "$_SDKS/$(basename "$_s")"
     done
-    # expose the real newest CLT SDK under its own name so find_sdk.py's ">=min" passes
     ln -sf "$_CLT_SDK" "$_SDKS/$(basename "$_CLT_SDK")"
+    # Toolchains: mirror Xcode's, but override `ld`. In clang mode pdfium links via
+    # -B <toolchain>/usr/bin/ld, and the worker's old Xcode ld rejects newer flags
+    # pdfium emits (e.g. -no_warn_duplicate_libraries). Point ld at our ld.lld wrapper
+    # (created below; the symlink resolves at build time) so modern ld64.lld links.
+    _TCB="$_FAKE_DEV/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+    mkdir -p "$_TCB"
+    for _u in "$_REAL_DEV"/Toolchains/XcodeDefault.xctoolchain/usr/*; do
+        [ "$(basename "$_u")" = "bin" ] && continue
+        ln -sf "$_u" "$_FAKE_DEV/Toolchains/XcodeDefault.xctoolchain/usr/$(basename "$_u")"
+    done
+    for _t in "$_REAL_DEV"/Toolchains/XcodeDefault.xctoolchain/usr/bin/*; do
+        [ -e "$_t" ] && ln -sf "$_t" "$_TCB/$(basename "$_t")"
+    done
+    ln -sf "$BUILD_PREFIX/bin/ld.lld" "$_TCB/ld"
     export DEVELOPER_DIR="$_FAKE_DEV"
-    echo "Redirected DEVELOPER_DIR=$DEVELOPER_DIR (exposing real SDK $_CLT_SDK)"
+    echo "Redirected DEVELOPER_DIR=$DEVELOPER_DIR (SDK $_CLT_SDK, ld -> ld.lld wrapper)"
 fi
 # ---------------------------------------------------------------------------
 
