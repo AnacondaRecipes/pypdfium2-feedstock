@@ -1,5 +1,5 @@
 {% set name = "pypdfium2" %}
-{% set version = "5.7.0" %}
+{% set version = "5.12.1" %}
 
 package:
   name: {{ name|lower }}
@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: 9febb09f532555485f064c1f6442f46d31e27be5981359cb06b5826695906a06
+  sha256: d0e0648fb2e28f50efcd1ec0a5a18ced9f4d66b2c227fae9b603f0a883b2d13f
 
 build:
   # win-64 needs the sourcebuild-toolchained backend (depot_tools + MSVC); that
@@ -40,12 +40,12 @@ requirements:
     - ctypesgen-pypdfium2-team >=5.4.0
     # Unvendored third-party libs (build.sh --no-vendor): pdfium links these conda
     # copies instead of bundling. Their run_exports add them to run, so they're
-    # tracked as real dependencies (CBC pins the versions).
+    # tracked as real dependencies (CBC pins the versions). Only libs pdfium
+    # actually links are listed -- libpng/libtiff are XFA-only codecs and XFA is
+    # off, so they're deliberately left vendored/unlinked (verified: not in DT_NEEDED).
     - zlib
-    - libpng
     - lcms2
     - openjpeg
-    - libtiff
     - freetype
   run:
     - python

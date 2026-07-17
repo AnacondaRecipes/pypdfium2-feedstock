@@ -83,13 +83,16 @@ fi
 # use_system_<lib>). Unvendoring makes each a real conda run dep (via run_exports),
 # so vulnerability trackers see them -- the point of building them separately.
 #   - libc++: use the system C++ stdlib (libstdc++ with conda gcc).
-#   - zlib/libpng/lcms2/openjpeg/libtiff: self-contained image/compression libs.
+#   - zlib/lcms2/openjpeg: self-contained codec/compression libs pdfium links.
 #   - freetype: font engine (build_native sets pdf_bundle_freetype=false); high
-#     CVE surface, so a valuable one to track. (libjpeg/icu stay vendored for now
-#     -- the 12-bit libjpeg path / pdfium's ICU version coupling; a later wave.)
+#     CVE surface, so a valuable one to track.
+# Only libs pdfium actually links are unvendored. libpng/libtiff are XFA-only
+# (pdf_enable_xfa=false here) so they are never compiled/linked -- unvendoring them
+# just created false run deps that pollute vuln tracking; left vendored/unused.
+# (libjpeg/icu also stay vendored -- 12-bit libjpeg path / ICU version coupling.)
 # --no-libclang-rt: don't require libclang_rt.builtins.a (use libgcc). -j honours
 # the conda build CPU allocation.
-_UNVENDOR="libc++ zlib libpng lcms2 openjpeg libtiff freetype"
+_UNVENDOR="libc++ zlib lcms2 openjpeg freetype"
 if [[ "$(uname)" == "Darwin" ]]; then
     # Force clang mode on macOS. Otherwise build_native takes its "gcc" toolchain
     # path (because /usr/bin/gcc exists), which drives GN's gcc_toolchain -- and
