@@ -9,6 +9,48 @@ set -euo pipefail
 # so the whole DEPS list + patch set is maintained upstream, not in this recipe.
 export PDFIUM_PLATFORM="sourcebuild-native"
 
+# --- macOS SDK discovery + find_sdk redirect --------------------------------
+# pdfium's build/mac/find_sdk.py demands a minimum macOS SDK and looks ONLY under
+# $DEVELOPER_DIR/Platforms/MacOSX.platform/Developer/SDKs (i.e. Xcode.app), where
+# the PBP worker currently has just MacOSX11.3.sdk -- even though CommandLineTools
+# has the newer MacOSX12.1.sdk (CONDA_BUILD_SYSROOT). First echo what SDKs actually
+# exist (diagnostic), then build a fake DEVELOPER_DIR that mirrors the real one but
+# exposes the CommandLineTools SDK under higher-version names so find_sdk accepts it.
+if [[ "$(uname)" == "Darwin" ]]; then
+    echo "===== macOS SDK DIAGNOSTIC ====="
+    echo "-- xcode-select -p --"; xcode-select -p 2>&1
+    echo "-- CONDA_BUILD_SYSROOT --"; echo "${CONDA_BUILD_SYSROOT:-<unset>}"
+    echo "-- CommandLineTools SDKs --"; ls -l /Library/Developer/CommandLineTools/SDKs/ 2>&1
+    echo "-- Xcode.app SDKs --"; ls -l "$(xcode-select -p 2>/dev/null)/Platforms/MacOSX.platform/Developer/SDKs/" 2>&1
+    echo "-- MacOSX.sdk resolves to --"; readlink "$(xcode-select -p 2>/dev/null)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk" 2>&1
+    echo "-- xcodebuild -showsdks --"; xcodebuild -showsdks 2>&1 | grep -i macos || echo "(xcodebuild unavailable)"
+    echo "-- xcrun sdk version/path --"; xcrun --show-sdk-version 2>&1; xcrun --show-sdk-path 2>&1
+    echo "-- any 13/14/15 SDK anywhere --"; find /Library/Developer /Applications 2>/dev/null -maxdepth 7 -iname 'MacOSX1[3-9]*.sdk' -o -iname 'MacOSX.sdk' 2>/dev/null | head
+    echo "===== END SDK DIAGNOSTIC ====="
+
+    _REAL_DEV="$(xcode-select -p 2>/dev/null || echo /Applications/Xcode.app/Contents/Developer)"
+    _CLT_SDK="${CONDA_BUILD_SYSROOT:-/Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk}"
+    _FAKE_DEV="${SRC_DIR}/_fake_dev"
+    mkdir -p "$_FAKE_DEV/Platforms/MacOSX.platform/Developer/SDKs"
+    # mirror the real developer dir's top-level entries (Toolchains, usr, ...) so
+    # any DEVELOPER_DIR-based tool lookups still resolve to the real Xcode tools
+    for _e in "$_REAL_DEV"/*; do
+        [ "$(basename "$_e")" = "Platforms" ] && continue
+        ln -sf "$_e" "$_FAKE_DEV/$(basename "$_e")"
+    done
+    _SDKS="$_FAKE_DEV/Platforms/MacOSX.platform/Developer/SDKs"
+    for _s in "$_REAL_DEV"/Platforms/MacOSX.platform/Developer/SDKs/*; do
+        [ -e "$_s" ] && ln -sf "$_s" "$_SDKS/$(basename "$_s")"
+    done
+    # expose the CommandLineTools SDK under its real name + higher aliases so
+    # find_sdk.py's ">= min" check is satisfied (it builds against these headers)
+    ln -sf "$_CLT_SDK" "$_SDKS/$(basename "$_CLT_SDK")"
+    for _v in 13.0 13.3 14.0 14.5; do ln -sf "$_CLT_SDK" "$_SDKS/MacOSX${_v}.sdk"; done
+    export DEVELOPER_DIR="$_FAKE_DEV"
+    echo "Redirected DEVELOPER_DIR=$DEVELOPER_DIR (SDKs -> $_CLT_SDK)"
+fi
+# ---------------------------------------------------------------------------
+
 # Let pdfium's hermetic compiles/links find the unvendored conda libs (zlib,
 # libpng, lcms2, openjpeg, libtiff, freetype). pdfium invokes the compiler by
 # absolute path, so -I/-L flag injection won't reach it -- but CPATH/LIBRARY_PATH
