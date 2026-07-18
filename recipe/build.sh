@@ -132,7 +132,7 @@ while [ $# -gt 0 ]; do
   prev="$1"; args+=("$1"); shift
 done
 case "$out" in
-  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")" -llcms2 -lopenjp2 -lfreetype) ;;
+  *.dylib) extra+=(-install_name "@rpath/$(basename "$out")" -llcms2 -lopenjp2 -lfreetype -ljpeg) ;;
 esac
 exec ld64.lld "${args[@]}" "${extra[@]}"
 LDLLD
@@ -170,19 +170,21 @@ fi
 # so vulnerability trackers see them -- the point of building them separately.
 #   - libc++: use the system C++ stdlib (libstdc++ with conda gcc).
 #   - zlib/lcms2/openjpeg: self-contained codec/compression libs pdfium links.
-#   - freetype: font engine (build_native sets pdf_bundle_freetype=false); high
-#     CVE surface, so a valuable one to track.
-# Only the four above are *tracked* (also in host: -> run via run_exports). libpng
-# and libtiff are also --no-vendor'd but NOT put in host: they are XFA-only codecs
-# and pdf_enable_xfa=false here, so pdfium never compiles/links them -- but their
-# vendored third_party/*/BUILD.gn reference third_party/zlib/BUILD.gn, which breaks
-# `gn gen` once zlib is unvendored. Passing --no-vendor gates their vendored BUILD.gn
-# out (use_system_*), fixing gn gen, while omitting them from host keeps them off the
-# dependency graph (no false run dep -- verified: not in DT_NEEDED). (libjpeg/icu
-# stay fully vendored -- 12-bit libjpeg path / ICU version coupling.)
+#   - freetype: font engine (build_native sets pdf_bundle_freetype=false); high CVE surface.
+#   - libjpeg: JPEG codec (DCTDecode) -- core fxcodec dep, high CVE surface. conda
+#     libjpeg-turbo is 8-bit only, so use_system_libjpeg drops pdfium's 12/16-bit
+#     path (irrelevant for standard PDFs).
+# Those five are *tracked* (also in host: -> run via run_exports). libpng and libtiff
+# are also --no-vendor'd but NOT put in host: they are XFA-only codecs and
+# pdf_enable_xfa=false here, so pdfium never compiles/links them -- but their vendored
+# third_party/*/BUILD.gn reference third_party/zlib/BUILD.gn, which breaks `gn gen`
+# once zlib is unvendored. --no-vendor gates their vendored BUILD.gn out (use_system_*),
+# fixing gn gen, while omitting them from host keeps them off the dependency graph (no
+# false run dep -- verified: not in DT_NEEDED). (harfbuzz/icu stay vendored -- pdfium
+# patches harfbuzz + drags glib; ICU is version-coupled.)
 # --no-libclang-rt: don't require libclang_rt.builtins.a (use libgcc). -j honours
 # the conda build CPU allocation.
-_UNVENDOR="libc++ zlib lcms2 openjpeg freetype libpng libtiff"
+_UNVENDOR="libc++ zlib lcms2 openjpeg freetype libjpeg libpng libtiff"
 if [[ "$(uname)" == "Darwin" ]]; then
     # Force clang mode on macOS. Otherwise build_native takes its "gcc" toolchain
     # path (because /usr/bin/gcc exists), which drives GN's gcc_toolchain -- and
