@@ -44,9 +44,9 @@ requirements:
     # actually links are listed -- libpng/libtiff are XFA-only codecs and XFA is
     # off, so they're deliberately left vendored/unlinked (verified: not in DT_NEEDED).
     - zlib {{ zlib }} 
-    - lcms2
-    - openjpeg
-    - freetype
+    - lcms2 {{ lcms2 }}
+    - openjpeg {{ openjpeg }}
+    - freetype {{ freetype }}
     - libjpeg-turbo
   run:
     - python
