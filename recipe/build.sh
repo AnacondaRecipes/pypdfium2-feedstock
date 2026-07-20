@@ -29,12 +29,8 @@ if [[ "$(uname)" == "Darwin" ]]; then
       echo "===== END SDK DIAGNOSTIC ====="
     ) 2>&1 || true
 
-    # Pick the newest real CommandLineTools SDK (14.5/15.2 if present), else the sysroot.
-    _CLT_SDK=""
-    for _cand in MacOSX15.2 MacOSX14.5 MacOSX13.3 MacOSX12.3; do
-        _p="/Library/Developer/CommandLineTools/SDKs/${_cand}.sdk"
-        [ -d "$_p" ] && { _CLT_SDK="$_p"; break; }
-    done
+    # Pick the newest CommandLineTools SDK (glob + version sort), else the sysroot.
+    _CLT_SDK="$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX*.sdk 2>/dev/null | sort -V | tail -1)"
     [ -n "$_CLT_SDK" ] || _CLT_SDK="${CONDA_BUILD_SYSROOT:-/Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk}"
 
     _REAL_DEV="$(xcode-select -p 2>/dev/null || echo /Applications/Xcode.app/Contents/Developer)"
@@ -43,8 +39,11 @@ if [[ "$(uname)" == "Darwin" ]]; then
     # mirror the real developer dir top-level entries so DEVELOPER_DIR tool lookups
     # still work (rebuild Platforms + Toolchains below)
     for _e in "$_REAL_DEV"/*; do
-        case "$(basename "$_e")" in Platforms|Toolchains) continue ;; esac
-        ln -sf "$_e" "$_FAKE_DEV/$(basename "$_e")"
+        _entry_name="$(basename "$_e")"
+        if [[ "$_entry_name" == "Platforms" || "$_entry_name" == "Toolchains" ]]; then
+            continue
+        fi
+        ln -sf "$_e" "$_FAKE_DEV/$_entry_name"
     done
     # Platforms: real SDKs + expose the newest CLT SDK so find_sdk.py's ">=min" passes
     _SDKS="$_FAKE_DEV/Platforms/MacOSX.platform/Developer/SDKs"
@@ -137,31 +136,7 @@ esac
 exec ld64.lld "${args[@]}" "${extra[@]}"
 LDLLD
     chmod +x "$BUILD_PREFIX/bin/ld.lld"
-    # At pdfium 7891/7913 build_native links the shared lib through gcc_solink_wrapper
-    # with a bare clang++ (no -fuse-ld, so the ld.lld wrapper above isn't hit), and it
-    # emits the Linux `-Wl,-soname` flag that Apple ld rejects. Shim the compiler
-    # drivers to rewrite -Wl,-soname,X -> -Wl,-install_name,@rpath/X. (Harmless in the
-    # clang-toolchain path, where the driver is called by absolute path and emits no -soname.)
-    for _name in clang clang++ "$CC" "$CXX" \
-                 arm64-apple-darwin20.0.0-clang arm64-apple-darwin20.0.0-clang++; do
-        [ -n "$_name" ] || continue
-        _real="$(command -v "$_name" 2>/dev/null)" || continue
-        case "$_real" in "$_SHIM"/*) continue ;; esac
-        cat > "$_SHIM/$(basename "$_name")" <<SHIM
-#!/bin/bash
-a=()
-for x in "\$@"; do
-  case "\$x" in
-    -Wl,-soname,*) a+=("-Wl,-install_name,@rpath/\${x#-Wl,-soname,}") ;;
-    -Wl,-soname=*) a+=("-Wl,-install_name,@rpath/\${x#-Wl,-soname=}") ;;
-    *) a+=("\$x") ;;
-  esac
-done
-exec "$_real" "\${a[@]}"
-SHIM
-        chmod +x "$_SHIM/$(basename "$_name")"
-    done
-    export PATH="$_SHIM:$PATH"   # ar + compiler shims ahead of Apple's tools
+    export PATH="$_SHIM:$PATH"   # ar shim ahead of Apple's /usr/bin/ar
 fi
 
 # Vendor pdfium's bundled third-party libs, EXCEPT the ones listed here, which we
