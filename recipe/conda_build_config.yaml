@@ -1,0 +1,12 @@
+# pdfium's build_native (setupsrc/build_native.py) only engages upstream's real
+# clang toolchain (build/toolchain/apple + -fuse-ld=lld) when clang >= 22. Below
+# that it implicitly falls back to --clang-as-gcc, driving GN's Linux gcc_solink
+# toolchain, which emits -Wl,-soname / -Wl,--whole-archive that Apple ld rejects.
+# The aggregate default for osx is clang 20, so bump osx to 22 to get the clean
+# apple/clang link path. Linux keeps the aggregate default (gcc 14.3.0).
+c_compiler_version:            # [linux or osx]
+  - 14.3.0                     # [linux]
+  - 22                         # [osx]
+cxx_compiler_version:          # [linux or osx]
+  - 14.3.0                     # [linux]
+  - 22                         # [osx]

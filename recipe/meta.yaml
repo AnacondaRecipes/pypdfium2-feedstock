@@ -1,5 +1,5 @@
 {% set name = "pypdfium2" %}
-{% set version = "4.19.0" %}
+{% set version = "5.12.1" %}
 
 package:
   name: {{ name|lower }}
@@ -7,31 +7,49 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: 1ca3a2ed080c263229af3fbff35ad7f751361861f10893d9908d4d852fe6eb28
+  sha256: d0e0648fb2e28f50efcd1ec0a5a18ced9f4d66b2c227fae9b603f0a883b2d13f
 
 build:
-  skip: True  # [linux and (ppc64le or s390x)]
+  # win-64 needs the sourcebuild-toolchained backend (depot_tools + MSVC); that
+  # integration is deferred to a follow-up ticket.
+  skip: True  # [win]
   entry_points:
-    - pypdfium2 = pypdfium2.__main__:cli_main
-  script_env:
-    - PDFIUM_PLATFORM=none
-  script:
-    - cp bindings/raw.py src/pypdfium2/raw.py
-    - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
-  number: 1
+    - pypdfium2 = pypdfium2_cli.__main__:cli_main
+  number: 0
 
 requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ stdlib('c') }}
+    - gn          # [not win]
+    - ninja-base  # [not win]
+    - llvm-tools  # [osx]     provides llvm-ar (pdfium's `ar -D` needs it; Apple ar lacks -D)
+    - lld         # [osx]     provides ld64.lld (pdfium's clang-mode link uses lld)
+    - git
+    - python
   host:
     - python
     - setuptools
+    - packaging
     - pip
-    - wheel !=0.38.0,!=0.38.1
-    - pdfium-binaries 118.0.5975
+    - wheel
+    # pypdfium2's bindings step calls ctypesgen with newer flags
+    # (--rt-libpaths/--ct-libpaths/--symbol-rules/--no-system-libsearch) that only
+    # the 5.4.0 fork understands; 1.1.1+N on pkgs/main is too old (metadata-gen fails).
+    - ctypesgen-pypdfium2-team >=5.4.0
+    # Unvendored third-party libs (build.sh --no-vendor): pdfium links these conda
+    # copies instead of bundling. Their run_exports add them to run, so they're
+    # tracked as real dependencies (CBC pins the versions). Only libs pdfium
+    # actually links are listed -- libpng/libtiff are XFA-only codecs and XFA is
+    # off, so they're deliberately left vendored/unlinked (verified: not in DT_NEEDED).
+    - zlib {{ zlib }}
+    - lcms2 {{ lcms2 }}
+    - openjpeg {{ openjpeg }}
+    - freetype {{ freetype }}
+    - libjpeg-turbo {{ libjpeg_turbo }}
   run:
     - python
-    - pdfium-binaries 118.0.5975
-    # to run pypdfium2 imgtopdf you need to have pillow
-    - pillow
 
 test:
   imports:
@@ -54,12 +72,9 @@ about:
     - LICENSES/Apache-2.0.txt
     - LICENSES/BSD-3-Clause.txt
     - LICENSES/CC-BY-4.0.txt
-    - .reuse/dep5
   doc_url: https://pypdfium2.readthedocs.io/en/stable
   dev_url: https://github.com/pypdfium2-team/pypdfium2
 
 extra:
   recipe-maintainers:
     - boldorider4
-  skip-lints:
-    - host_section_needs_exact_pinnings
