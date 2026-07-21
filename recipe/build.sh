@@ -168,7 +168,19 @@ if [[ "$(uname)" == "Darwin" ]]; then
     # mac-native toolchain, which links dylibs correctly (-install_name/-all_load).
     export BUILD_PARAMS="--compiler clang --clang-path ${BUILD_PREFIX} --vendor all --no-vendor ${_UNVENDOR} --no-libclang-rt -j ${CPU_COUNT:-4}"
 else
-    export BUILD_PARAMS="--vendor all --no-vendor ${_UNVENDOR} --no-libclang-rt -j ${CPU_COUNT:-4}"
+    # Always name the compiler explicitly. build_native only probes the system when
+    # --compiler is omitted, and its probe is `shutil.which("gcc")` -- conda's compiler
+    # is x86_64-conda-linux-gnu-cc, so a bare `gcc` only resolves to a *system* one.
+    # That made the build silently depend on the image happening to ship gcc (fine on
+    # the fat prod image, "Neither gcc nor clang installed." on a lean container).
+    # Passing --compiler gcc skips the probe entirely; the toolchain still compiles with
+    # conda's $CC/$CXX.
+    export BUILD_PARAMS="--compiler gcc --vendor all --no-vendor ${_UNVENDOR} --no-libclang-rt -j ${CPU_COUNT:-4}"
+    # pdfium's gcc toolchain resolves its binutils as TOOLPREFIX + ar/nm/readelf, and
+    # the default TOOLPREFIX ("") would pick up the *system* binutils. conda exports
+    # absolute tool paths sharing one prefix ($BUILD_PREFIX/bin/<triple>-), so derive it
+    # from $AR to keep the whole toolchain inside the build environment.
+    [ -n "${AR:-}" ] && [ "${AR%ar}" != "$AR" ] && export TOOLPREFIX="${AR%ar}"
 fi
 
 $PYTHON -m pip install . -vv --no-deps --no-build-isolation
