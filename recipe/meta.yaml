@@ -17,7 +17,7 @@ build:
   script_env:
     - PDFIUM_PLATFORM=none
   script:
-    - cp bindings/raw.py src/pypdfium2/raw.py
+    - python -c "import shutil; shutil.copy('bindings/raw.py', 'src/pypdfium2/raw.py')"
     - {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
   number: 2
 
