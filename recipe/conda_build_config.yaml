@@ -3,10 +3,8 @@
 # that it implicitly falls back to --clang-as-gcc, driving GN's Linux gcc_solink
 # toolchain, which emits -Wl,-soname / -Wl,--whole-archive that Apple ld rejects.
 # The aggregate default for osx is clang 20, so bump osx to 22 to get the clean
-# apple/clang link path. Linux keeps the aggregate default (gcc 14.3.0).
-c_compiler_version:            # [linux or osx]
-  - 14.3.0                     # [linux]
+# apple/clang link path. Linux uses the aggregate default (gcc 14.3.0).
+c_compiler_version:            # [osx]
   - 22                         # [osx]
-cxx_compiler_version:          # [linux or osx]
-  - 14.3.0                     # [linux]
+cxx_compiler_version:          # [osx]
   - 22                         # [osx]
