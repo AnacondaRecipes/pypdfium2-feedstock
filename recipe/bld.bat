@@ -1,6 +1,6 @@
 @echo off
 REM ===========================================================================
-REM win-64 pdfium source build via pypdfium2 sourcebuild-toolchained backend
+REM win-64 pdfium source build via pypdfium2's sourcebuild-toolchained backend
 REM (depot_tools + gclient sync + Google prebuilt clang + local MSVC/Windows SDK).
 REM No worker-AMI changes required: MinGit is self-provisioned, and pdfium's
 REM debugger-DLL copy (which would otherwise need the SDK "Debugging Tools"
@@ -8,44 +8,56 @@ REM feature) is patched out -- dbghelp is not needed for the shipped release lib
 REM ===========================================================================
 set DEPOT_TOOLS_WIN_TOOLCHAIN=0
 
-REM depot_tools bootstrap needs a Git-for-Windows-layout git; provision MinGit.
+REM depot_tools' bootstrap only accepts a Git-for-Windows-layout git: an ancestor
+REM dir named "Git" with cmd\git.exe, or an MSYS2 ucrt64/clang64/clangarm64 tree.
+REM Neither conda `git` (Library\bin\git.exe) nor `msys2-git` (Library\usr\bin)
+REM matches, so provision MinGit (the GfW portable layout) if absent.
 if not exist C:\Git\cmd\git.exe (
   echo Provisioning MinGit at C:\Git ...
   powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.3/MinGit-2.55.0.3-64-bit.zip' -OutFile \"$env:TEMP\MinGit.zip\"; Expand-Archive -Path \"$env:TEMP\MinGit.zip\" -DestinationPath C:\Git -Force"
   if errorlevel 1 exit 1
 )
 set PATH=C:\Git\cmd;%PATH%
+REM allow `git apply` on the gclient-synced pdfium checkout regardless of owner
+git config --global --add safe.directory "*"
 
 REM ctypesgen auto-selects cl.exe under vs2022 (unparseable -E); force clang -E.
 set CPP=clang -E
 
-REM Pass 1: sync the pdfium checkout (+ first gn gen). gclient's gsutil DEPS hooks
-REM can flake transiently (lockfile error), leaving the checkout without gn; each
-REM re-run resumes the sync, so retry until gn is present. Once the checkout has
-REM gn, sync is complete and gn gen will have failed only on the dbghelp step,
-REM which the patch below removes.
+REM Pass 1: sync the pdfium checkout (then gn gen, which fails on the debugger-DLL
+REM copy -- patched out below). depot_tools' gsutil bootstrap occasionally fails to
+REM lock its shared cache under gclient's parallel DEPS fetches (a known transient,
+REM not a recipe issue); a re-run resumes the checkout. Retry only until pdfium's gn
+REM binary is present (i.e. the sync completed) -- real build failures surface later
+REM at gn gen / ninja and are NOT retried here.
 set _tries=0
 :sync_loop
 "%PYTHON%" setupsrc\build_toolchained.py
 if exist sbuild\toolchained\pdfium\buildtools\win\gn.exe goto synced
 set /a _tries+=1
-if %_tries% GEQ 4 (echo ERROR: gclient sync did not complete after %_tries% attempts & exit 1)
+if %_tries% GEQ 4 (echo ERROR: pdfium sync did not complete after %_tries% attempts & exit 1)
 echo pdfium sync incomplete ^(attempt %_tries%^), retrying...
 goto sync_loop
 :synced
 
-REM Patch out the _CopyDebugger CALL (keeps CopyDlls' release-CRT copy intact).
-REM dbghelp is only a crash-symbolization aid for pdfium's own tests; the shipped
-REM package contains only pdfium.dll, so this removes the SDK-feature dependency.
-"%PYTHON%" -c "import pathlib,re; p=pathlib.Path(r'sbuild/toolchained/pdfium/build/vs_toolchain.py'); s=p.read_text(); n,c=re.subn(r'(?<!def )_CopyDebugger\(target_dir, target_cpu\)','pass  # _CopyDebugger disabled (dbghelp not needed for shipped release lib)',s); assert c>=1,'patch site not found'; p.write_text(n); print('patched _CopyDebugger call(s):',c)"
-if errorlevel 1 exit 1
+REM Skip pdfium's debugger-DLL copy. vs_toolchain.py copies dbghelp/dbgcore/etc.
+REM from the SDK "Debugging Tools" feature purely as a crash-symbolization aid for
+REM pdfium's own tests; the shipped conda package is just pdfium.dll, so removing
+REM the copy drops that AMI-only dependency. Applied as a reviewable patch.
+pushd sbuild\toolchained\pdfium
+git apply --ignore-whitespace "%RECIPE_DIR%\patches\skip-debugger-dll-copy.patch"
+if errorlevel 1 (popd & echo ERROR: skip-debugger-dll-copy.patch failed to apply & exit 1)
+popd
 
-REM Pass 2: reuse the synced checkout (skips gclient), re-run gn gen (now clean)
-REM + ninja build, then pack data\sourcebuild\.
+REM Pass 2: reuse the synced checkout; `gn gen` (generate the ninja build files from
+REM pdfium's GN config) now succeeds, then ninja builds pdfium and packs data\sourcebuild\.
 "%PYTHON%" setupsrc\build_toolchained.py
 if errorlevel 1 exit 1
 
-REM Wrap the built pdfium into the package; ctypesgen (host) regenerates bindings.
+REM Wrap the built pdfium into the package. PDFIUM_PLATFORM=sourcebuild tells
+REM pypdfium2 to consume the pdfium we just built (data\sourcebuild\pdfium.dll);
+REM "toolchained" refers to HOW that pdfium was built (build_toolchained.py above),
+REM matching upstream's own sbuild_one.yaml. ctypesgen (host) regenerates bindings.
 set PDFIUM_PLATFORM=sourcebuild
 "%PYTHON%" -m pip install . -vv --no-deps --no-build-isolation
 if errorlevel 1 exit 1

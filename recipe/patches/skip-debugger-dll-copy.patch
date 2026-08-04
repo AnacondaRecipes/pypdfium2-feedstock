@@ -1,0 +1,22 @@
+--- a/build/vs_toolchain.py
++++ b/build/vs_toolchain.py
+@@ -430,7 +430,8 @@
+   _CopyRuntime(target_dir, runtime_dir, target_cpu, debug=False)
+   if configuration == 'Debug':
+     _CopyRuntime(target_dir, runtime_dir, target_cpu, debug=True)
+-  _CopyDebugger(target_dir, target_cpu)
++  pass  # pypdfium2-conda: skip debugger-DLL copy (dbghelp is a test-only
++          # crash-symbolization aid; the shipped package is just pdfium.dll)
+   if target_cpu == 'arm64':
+     target_dir = os.path.join(target_dir, 'win_clang_x64')
+     target_cpu = 'x64'
+@@ -439,7 +440,8 @@
+     _CopyRuntime(target_dir, runtime_dir, target_cpu, debug=False)
+     if configuration == 'Debug':
+       _CopyRuntime(target_dir, runtime_dir, target_cpu, debug=True)
+-    _CopyDebugger(target_dir, target_cpu)
++    pass  # pypdfium2-conda: skip debugger-DLL copy (dbghelp is a test-only
++          # crash-symbolization aid; the shipped package is just pdfium.dll)
+ 
+ 
+ def _CopyDebugger(target_dir, target_cpu):
