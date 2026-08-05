@@ -11,12 +11,16 @@ set DEPOT_TOOLS_WIN_TOOLCHAIN=0
 REM depot_tools' bootstrap only accepts a Git-for-Windows-layout git: an ancestor
 REM dir named "Git" with cmd\git.exe, or an MSYS2 ucrt64/clang64/clangarm64 tree.
 REM Neither conda `git` (Library\bin\git.exe) nor `msys2-git` (Library\usr\bin)
-REM matches, so provision MinGit (the GfW portable layout) if absent.
-if not exist C:\Git\cmd\git.exe (
-  echo Provisioning MinGit at C:\Git ...
-  powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.3/MinGit-2.55.0.3-64-bit.zip' -OutFile \"$env:TEMP\MinGit.zip\"; Expand-Archive -Path \"$env:TEMP\MinGit.zip\" -DestinationPath C:\Git -Force"
-  if errorlevel 1 exit 1
-)
+REM matches, so provision MinGit (the GfW portable layout) if absent. The download
+REM is SHA-256 pinned (git-for-windows' published checksum for this exact asset) and
+REM verified before extraction, so a tampered/MITM'd zip fails the build.
+REM (goto-label rather than an if(...) block: the PowerShell below contains parens
+REM inside its quoted -Command, which cmd's parenthesized-block parser mishandles.)
+if exist C:\Git\cmd\git.exe goto mingit_ready
+echo Provisioning MinGit at C:\Git ...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; $zip=\"$env:TEMP\MinGit.zip\"; $sha='f48e2d2dc74a24454adc6d8fd0ac25bf9c2386f19cfb06202b9465aaad4f9f05'; Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.3/MinGit-2.55.0.3-64-bit.zip' -OutFile $zip; $h=(Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); if ($h -ne $sha) { throw \"MinGit SHA-256 mismatch: got $h expected $sha\" }; Expand-Archive -Path $zip -DestinationPath C:\Git -Force"
+if errorlevel 1 exit 1
+:mingit_ready
 set PATH=C:\Git\cmd;%PATH%
 REM allow `git apply` on the gclient-synced pdfium checkout regardless of owner
 git config --global --add safe.directory "*"
