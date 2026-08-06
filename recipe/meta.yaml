@@ -10,9 +10,6 @@ source:
   sha256: d0e0648fb2e28f50efcd1ec0a5a18ced9f4d66b2c227fae9b603f0a883b2d13f
 
 build:
-  # win-64 needs the sourcebuild-toolchained backend (depot_tools + MSVC); that
-  # integration is deferred to a follow-up ticket.
-  skip: True  # [win]
   entry_points:
     - pypdfium2 = pypdfium2_cli.__main__:cli_main
   number: 0
@@ -26,6 +23,10 @@ requirements:
     - ninja-base  # [not win]
     - llvm-tools  # [osx]     provides llvm-ar (pdfium's `ar -D` needs it; Apple ar lacks -D)
     - lld         # [osx]     provides ld64.lld (pdfium's clang-mode link uses lld)
+    # win toolchained bindings step: ctypesgen needs a gcc/clang preprocessor, but the
+    # win toolchain is MSVC-only. bld.bat forces `CPP=clang -E` (cl.exe's -E output is
+    # unparseable by ctypesgen).
+    - clang       # [win]
     - git
     - python
   host:
@@ -43,11 +44,13 @@ requirements:
     # tracked as real dependencies (CBC pins the versions). Only libs pdfium
     # actually links are listed -- libpng/libtiff are XFA-only codecs and XFA is
     # off, so they're deliberately left vendored/unlinked (verified: not in DT_NEEDED).
-    - zlib {{ zlib }}
-    - lcms2 {{ lcms2 }}
-    - openjpeg {{ openjpeg }}
-    - freetype {{ freetype }}
-    - libjpeg-turbo {{ libjpeg_turbo }}
+    # Native (linux/osx) backend only -- the win toolchained backend uses pdfium's
+    # hermetic vendored build, so these are not unvendored/tracked on win.
+    - zlib {{ zlib }}                     # [not win]
+    - lcms2 {{ lcms2 }}                   # [not win]
+    - openjpeg {{ openjpeg }}             # [not win]
+    - freetype {{ freetype }}             # [not win]
+    - libjpeg-turbo {{ libjpeg_turbo }}   # [not win]
   run:
     - python
 
@@ -66,7 +69,10 @@ about:
   description: |
     pypdfium2 is an ABI-level Python 3 binding to PDFium, a powerful and liberal-licensed library for PDF rendering,
     inspection, manipulation and creation.
-  license: Apache-2.0
+  # Upstream SPDX (pyproject.toml): "Apache-2.0 OR BSD-3-Clause". pdfium itself is
+  # BSD-3-Clause and is compiled/shipped in the built pdfium binary; CC-BY-4.0
+  # covers bundled docs/assets. License texts for all three are shipped below.
+  license: Apache-2.0 OR BSD-3-Clause
   license_family: Apache
   license_file:
     - LICENSES/Apache-2.0.txt
