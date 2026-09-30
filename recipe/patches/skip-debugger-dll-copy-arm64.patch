@@ -1,0 +1,31 @@
+From 799a96d28411860d8d824b81cf6e1b1766ba3135 Mon Sep 17 00:00:00 2001
+From: "X. Kong" <xkong@anaconda.com>
+Date: Tue, 29 Sep 2026 15:26:32 -0600
+Subject: [PATCH] pypdfium2-conda: do not copy dbghelp on win-arm64
+
+pdfium's vs_toolchain.py copies dbghelp/dbgcore/etc. from the SDK "Debugging Tools"
+feature purely as a crash-symbolization aid for pdfium's own tests, which the
+shipped conda package does not need. On win-arm64 pypdfium2's own arm64_native.patch
+has already deleted the trailing win_clang_x64 runtime block, so the win-64 patch
+cannot be reused there and the arm64 call site is patched here instead.
+---
+ build/vs_toolchain.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/build/vs_toolchain.py b/build/vs_toolchain.py
+index c323a39..bafaf14 100644
+--- a/build/vs_toolchain.py
++++ b/build/vs_toolchain.py
+@@ -430,7 +430,8 @@ def CopyDlls(target_dir, configuration, target_cpu):
+   _CopyRuntime(target_dir, runtime_dir, target_cpu, debug=False)
+   if configuration == 'Debug':
+     _CopyRuntime(target_dir, runtime_dir, target_cpu, debug=True)
+-  _CopyDebugger(target_dir, target_cpu)
++  pass  # pypdfium2-conda: skip debugger-DLL copy (dbghelp is a test-only
++          # crash-symbolization aid; the shipped package is just pdfium.dll)
+ 
+ 
+ def _CopyDebugger(target_dir, target_cpu):
+-- 
+2.51.0.windows.1
+
