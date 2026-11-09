@@ -1,5 +1,5 @@
 From 799a96d28411860d8d824b81cf6e1b1766ba3135 Mon Sep 17 00:00:00 2001
-From: "X. Kong" <xkong@anaconda.com>
+From: "Eric L" <elundby@anaconda.com>
 Date: Tue, 29 Sep 2026 15:26:32 -0600
 Subject: [PATCH] pypdfium2-conda: do not copy dbghelp on win-arm64
 
