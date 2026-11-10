@@ -12,7 +12,7 @@ source:
 build:
   entry_points:
     - pypdfium2 = pypdfium2_cli.__main__:cli_main
-  number: 0
+  number: 1
 
 requirements:
   build:
